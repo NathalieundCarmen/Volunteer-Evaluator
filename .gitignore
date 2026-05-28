@@ -1,0 +1,28 @@
+# API Keys & Secrets
+.env
+*.env
+config.local.js
+secrets.js
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local test files
+*.local.html
+*.test.html
+proxy-test/
+
+# Logs
+*.log
