@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat-OP Assistent</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f5f7;
+      color: #24292e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; }
+    header .subtitle { font-size: 0.78rem; opacity: 0.65; margin-top: 2px; }
+
+    .lang-btn {
+      background: rgba(255,255,255,0.13);
+      border: 1px solid rgba(255,255,255,0.28);
+      color: #fff;
+      padding: 0.35rem 0.85rem;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: background 0.18s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .lang-btn:hover { background: rgba(255,255,255,0.22); }
+
+    main {
+      max-width: 740px;
+      margin: 1.75rem auto;
+      padding: 0 1rem 2rem;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e1e4e8;
+      border-radius: 8px;
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .field-label {
+      display: block;
+      font-weight: 700;
+      font-size: 0.72rem;
+      color: #586069;
+      margin-bottom: 0.38rem;
+      text-transform: uppercase;
+      letter-spacing: 0.055em;
+    }
+    .req { color: #c0392b; }
+
+    input[type="password"], textarea {
+      width: 100%;
+      padding: 0.58rem 0.75rem;
+      border: 1px solid #d1d5da;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      background: #fafbfc;
+      transition: border-color 0.18s, box-shadow 0.18s;
+      resize: vertical;
+    }
+    input[type="password"]:focus, textarea:focus {
+      outline: none;
+      border-color: #c0392b;
+      box-shadow: 0 0 0 3px rgba(192,57,43,0.11);
+      background: #fff;
+    }
+    textarea#message { min-height: 100px; }
+    textarea#chatlog  { min-height: 72px; margin-top: 0.5rem; }
+
+    details.chatlog-wrap { margin-top: 1rem; }
+    details.chatlog-wrap summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.055em;
+      color: #586069;
+      user-select: none;
+      padding: 0.25rem 0;
+    }
+    details.chatlog-wrap summary::-webkit-details-marker { display: none; }
+    .chevron { font-size: 0.62rem; transition: transform 0.18s; display: inline-block; }
+    details.chatlog-wrap[open] .chevron { transform: rotate(180deg); }
+    .opt-badge {
+      font-size: 0.68rem;
+      font-weight: 400;
+      background: #f1f3f4;
+      border-radius: 10px;
+      padding: 1px 7px;
+      color: #6a737d;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 0.78rem;
+      background: #c0392b;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.97rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s;
+      margin-bottom: 1rem;
+      letter-spacing: 0.01em;
+    }
+    .btn-submit:hover  { background: #a93226; }
+    .btn-submit:active { opacity: 0.9; }
+    .btn-submit:disabled { background: #bdc3c7; cursor: not-allowed; }
+
+    #loadingBox {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      justify-content: center;
+      padding: 1.4rem;
+      color: #586069;
+      font-size: 0.9rem;
+    }
+    .spinner {
+      width: 22px; height: 22px;
+      border: 3px solid #e1e4e8;
+      border-top-color: #c0392b;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #errorBox {
+      display: none;
+      background: #fdf3f2;
+      border: 1px solid #f5c6c7;
+      border-radius: 6px;
+      padding: 0.85rem 1.1rem;
+      margin-bottom: 1rem;
+      color: #721c24;
+      font-size: 0.88rem;
+    }
+    #errorBox strong { display: block; margin-bottom: 3px; font-size: 0.9rem; }
+
+    #outputCard { display: none; }
+
+    /* DE-USER CHANNEL */
+    .alert-critical {
+      background: #6c0000;
+      color: #fff;
+      border-radius: 6px;
+      padding: 1.1rem 1.3rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .alert-critical .ai { font-size: 1.6rem; flex-shrink: 0; line-height: 1; }
+    .alert-critical strong { font-size: 1rem; display: block; margin-bottom: 0.35rem; letter-spacing: 0.03em; }
+    .alert-critical p { font-size: 0.88rem; opacity: 0.92; }
+
+    /* HUMAN REVIEW */
+    .alert-review {
+      background: #fff9e6;
+      border: 2px solid #f0a500;
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+    }
+    .review-title { font-size: 0.85rem; font-weight: 700; color: #b7600a; margin-bottom: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ACTION line */
+    .action-line {
+      background: #fff8f7;
+      border-left: 4px solid #c0392b;
+      padding: 0.7rem 0.9rem;
+      border-radius: 0 6px 6px 0;
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: #9e2a2b;
+      margin-bottom: 1.1rem;
+    }
+
+    /* Info grid */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.7rem 1.4rem;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 500px) { .info-grid { grid-template-columns: 1fr; } }
+
+    .info-item label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6a737d;
+      margin-bottom: 0.22rem;
+    }
+    .info-item .val { font-size: 0.92rem; font-weight: 500; color: #24292e; }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .b-info     { background: #e8f4fd; color: #1a6fa3; }
+    .b-low      { background: #eaf6ec; color: #1e7e34; }
+    .b-medium   { background: #fff3cd; color: #7d4e00; }
+    .b-high     { background: #fde8e8; color: #9e2a2b; }
+    .b-critical { background: #6c0000; color: #fff; }
+    .b-conf-med { background: #eaf6ec; color: #1e7e34; }
+    .b-conf-low { background: #fff3cd; color: #7d4e00; }
+    .b-yes      { background: #fde8e8; color: #9e2a2b; }
+    .b-no       { background: #f1f3f4; color: #586069; }
+
+    .reasoning-box {
+      background: #f6f8fa;
+      border-radius: 6px;
+      padding: 0.7rem 0.9rem;
+      font-size: 0.86rem;
+      color: #444;
+      margin-bottom: 0.9rem;
+    }
+    .reasoning-box .rlabel {
+      display: block;
+      font-size: 0.67rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6a737d;
+      margin-bottom: 0.25rem;
+    }
+
+    hr.div { border: none; border-top: 1px solid #e1e4e8; margin: 1rem 0; }
+
+    .draft-section .dlabel {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6a737d;
+      margin-bottom: 0.38rem;
+    }
+    .draft-text {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 6px;
+      padding: 0.85rem 1rem;
+      font-size: 0.9rem;
+      color: #14532d;
+      white-space: pre-wrap;
+      font-style: italic;
+    }
+    .draft-no-match {
+      background: #f6f8fa;
+      border: 1px solid #d1d5da;
+      border-radius: 6px;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.86rem;
+      color: #586069;
+    }
+    .meta-line {
+      margin-top: 0.55rem;
+      font-size: 0.8rem;
+      color: #6a737d;
+      line-height: 1.55;
+    }
+    .meta-line strong { color: #24292e; }
+
+    .field-row { margin-bottom: 0.55rem; }
+    .field-row label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6a737d;
+      margin-bottom: 0.2rem;
+    }
+    .field-row span { font-size: 0.9rem; color: #24292e; }
+
+    details.raw-wrap { margin-top: 1rem; }
+    details.raw-wrap summary {
+      cursor: pointer;
+      font-size: 0.78rem;
+      color: #8a9099;
+      user-select: none;
+      list-style: none;
+    }
+    details.raw-wrap summary::-webkit-details-marker { display: none; }
+    details.raw-wrap pre {
+      background: #f6f8fa;
+      border: 1px solid #e1e4e8;
+      border-radius: 4px;
+      padding: 0.7rem;
+      font-size: 0.76rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-top: 0.45rem;
+      color: #444;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.25rem 1rem 2rem;
+      color: #6a737d;
+      font-size: 0.8rem;
+      border-top: 1px solid #e1e4e8;
+    }
+    .hitl {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: #fff3cd;
+      border: 1px solid #f0c36d;
+      border-radius: 20px;
+      padding: 0.28rem 0.78rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #7d4e00;
+      margin-bottom: 0.4rem;
+    }
+    footer p { max-width: 480px; margin: 0 auto; line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+<!-- System prompt stored as raw text to avoid JS escaping issues -->
+<textarea id="sysPrompt" style="display:none" readonly>
+# Moderation Assistant — Context File
+
+## Role
+You are a moderation assistant for Poppen.de (POP) and Fetisch.de (FET), German adult dating platforms. You classify user reports and support Chat-OPs and Volunteers in moderation decisions. You never take action — a human always reviews your output before acting.
+
+## Role Separation
+- **Chat-OP (Volunteer)**: Responsible for chat rooms only. Can execute warnings for Volunteer-level violations. Must report "Only Support" cases — never act on them.
+- **Forum-MOD (Volunteer)**: Responsible for forum content. Same restriction applies.
+- **Support (Core Team)**: Full access including "Only Support" categories. Platform-wide authority.
+
+## Categories and Violations
+
+### A — Contact & Communication
+- Contact details (phone, email, social media) shared publicly → Chat Rule 3
+- External links → Chat Rule 3
+- External advertising → Community Guidelines
+
+### B — Behavior & Tone
+- Inappropriate behaviour → Community Guidelines
+- Tone/language (borderline) → Chat Rule 1
+- Disruptiveness/penetrance → Community Guidelines
+- Unhöfliche/unerwünschte Ansprache (e.g. "boah nervst du") → Community Guidelines (Low, NOT Beleidigung — see Edge Case Rulings)
+- Insult (low) → Chat Rule 1
+- Insult (moderate) → Chat Rule 1
+- Insult (strong) → Chat Rule 1
+- Discrimination → Chat Rule 1 / Community Guidelines
+- Unerwünschtes Verhalten / Systemkritik (member complaining about penalty points or moderation system) → Community Guidelines
+
+### C — Content & Media
+- Adult content in public chat → Chat Rule 9
+- Unallowed GIFs/memes → Chat Rule 10
+- Photo exchange of third persons → Chat Rule 6
+- Fake photo *(Only Support)* → Community Guidelines
+- Searching for/buying photos → Chat Rule 5
+
+### D — Taboo & Criminal
+- Underage sex fantasies → Chat Rule 7/8
+- Underage suspicion *(Only Support)* → Chat Rule 7
+- Bestiality fantasy → Chat Rule 8
+- Bestiality images/videos/meetups *(Only Support)* → Chat Rule 8
+- Incest fantasies → Chat Rule 8
+- Real incest *(Only Support)* → Chat Rule 7/8
+- Fantasies of crime → Chat Rule 7
+- Childhood/youth stories *(Only Support)* → Chat Rule 7
+
+### E — Offers & Commercial
+- Public date ads → Chat Rule 11
+- Fertility offers → Chat Rule 4
+- Financial offers → Chat Rule 5
+- FinDom/Sugar relationship → Chat Rule 5
+- Reporting without reason *(Only Support)* → Community Guidelines
+
+### F — Technical & Account
+- Double profile *(Only Support)* → Community Guidelines
+- False accusations → Chat Rule 2
+- Wrong gender *(Only Support)* → Chat Rule 2
+- Unauthorized room name → Chat Rule 12/13/14
+- Livestream violation *(Only Support)* → Community Guidelines
+- Unsolicited explicit photos *(Only Support)* → Community Guidelines
+
+### G — Drugs
+- Drug talk (hint) → Chat Rule 1
+- Drug offer/request → Chat Rule 1
+
+### H — Forum-specific
+- Off topic / forum rule violation → Forum Rule 6
+- Duplicate topic → Forum Rule 6
+- Insufficient discussion basis → Forum Rule 2
+- Date ad in forum → Forum Rule 3
+- Adult content in forum → Forum Rule 1
+- Game spoiler → Forum Rule
+- Wrong language → Forum Rule
+
+## Severity Scale
+- **Info**: General notices, no penalty point. All roles.
+- **Low**: Tone, disruptiveness, date ads, external links. Warning + 1-2 penalty points. Volunteers + Support.
+- **Medium**: Insults (low/moderate), contact details, GIFs. Warning + penalty points + restriction. Volunteers + Support.
+- **High**: Insults (strong), discrimination, drugs. Warning + increased penalty points. Volunteers + Support.
+- **Critical**: Underage suspicion, bestiality, real incest, double profile. Immediate ban / escalation. **Support only.**
+
+## Penalty Point System
+- 15 points = permanent profile ban
+- Points without expiry accumulate permanently (cumulation principle)
+- Points with expiry drop automatically after defined period
+
+## Hard No List — Never draft or decide automatically:
+- Profile bans
+- LERS tickets
+- Legal escalations
+- Crisis communication
+- Anything involving a minor
+- Any "Only Support" category
+- Real names of members
+
+## Edge Cases & Known Ambiguities (from DFT-11596)
+1. **Insult levels** — No written definition of low/moderate/strong. Currently subjective. TODO: define with examples.
+2. **Only Support handover** — No documented process for how a Volunteer reports these cases. TODO: define format and recipient.
+3. **Taboo escalation logic** — Fantasy → Suspicion → Real Case exist as separate reasons but escalation path between them is not documented.
+4. **Penalty point progression** — Not transparently documented how many points lead to restriction vs. temporary ban vs. permanent ban.
+5. **Role separation** — Exists in practice, not formally written. TODO: define which warning reasons are accessible per role.
+6. **AI role logic** — AI must mirror role separation: "Only Support" case detected → escalation flag only, no warning suggestion.
+
+### Edge Case Rulings (added Day 5 of Sprint 3)
+
+**Age-play with preemptive age disclaimer (Cat. D)**
+A disclaimer such as "alle Personen sind volljährig" does not resolve the classification on its own. Test 1 — age-reducing language: does the request contain any age-reducing language — words like *jung*, *Schülerin*, *Teenager*, *jünger als 18*, minor-age numbers, or diminutive role labels? If no → adult roleplay, not a Cat. D violation. If yes → proceed to Test 2. Test 2 — roleplay framing: is the message explicitly set in a designated roleplay room, or is the message itself framed as a roleplay invitation (e.g., "wer spielt mit", "RP:", scene-setting language)? If roleplay framing is present → **watch-first, do not act immediately**; monitor follow-up messages and reclassify to **D — Underage suspicion, Only Support** if any follow-up introduces underage markers or moves from fantasy framing toward real-world intent. If no roleplay framing is present → **D — Underage sex fantasies, High, Chat Rule 7/8**, regardless of any disclaimer.
+
+**Discrimination vs. Tone/language borderline (Cat. B)**
+Test: does the statement make a derogatory characterisation of a protected group (gender, ethnicity, religion, disability, sexual orientation) that a reasonable member of that group would read as an attack on their identity? If yes → **B — Discrimination, High, Chat Rule 1 / Community Guidelines**. If the statement is a generalising joke with no direct target, contains a humorous or self-deprecating marker (e.g., *lach*, *haha*, clear irony), and no individual member of the group is specifically addressed → **B — Tone/language borderline, Low, Chat Rule 1**. When the test produces a split between the two, default to the lower severity and note the rationale in the case record.
+
+**Photo exchange: own images vs. third-party images (Cat. C)**
+A member sharing their own images is not a Cat. C violation (assess separately under Cat. C — Adult content if the room is public). Third-party classification turns on whether the other person is a verifiable co-owner of the profile: if the profile is a couple profile and the partner is listed as a registered platform member on that profile → their images are treated as own images, no Cat. C violation. If the partner is not listed or cannot be verified → **C — Photo exchange of third persons, Medium, Chat Rule 6**. A single-male profile sharing images of an identified woman is always third-party, regardless of any claimed consent.
+
+**Reviewer note for Cat. C — Photo exchange of third persons:** When a member refers to a partner (e.g. "meine Freundin", "meine Frau", "mein Partner") always add to Notes for reviewer: "Prüfen ob verifiziertes Paarprofil vorhanden — falls ja, kein Verstoß (Bilder gelten als eigene Bilder)."
+
+**Photo exchange: searching vs. third-party images vs. selling (Cat. C / Cat. E)**
+Searching for photo exchange partners is normal platform behavior on POP and FET and is NOT a violation. Three distinct situations apply:
+
+1. **Searching for photo exchange partners** (e.g. "wer will Bilder tauschen", "suche Bildtauschpartner") → **No violation.** Normal member interaction — do not classify.
+2. **Offering or sharing photos of a third person** (e.g. "ich biete Bilder von X an") → **C — Photo exchange of third persons (Bildertausch 3. Personen), Medium, Chat Rule 6.** Apply the own-images vs. third-party-images ruling above.
+3. **Selling photos for money** (e.g. "wer will Bilder kaufen", "Bilder zu verkaufen") → **E — Finanzielles Interesse, Medium, Chat Rule 5.**
+
+The platform label **Bilder/Kleidung Suche** applies only to commercial selling of photos or clothing. Do not apply this label to members seeking a mutual photo exchange.
+
+**Unterwäsche/Clothing sales offer (Cat. E — not DE-User Channel)**
+A member offering to sell underwear or clothing items (e.g. *Slips*, *BH*, *Strümpfe*, *getragene Wäsche*) in chat is a commercial offer. Classify as **E — Finanzielles Interesse, Medium, Chat Rule 5**. Do NOT trigger the DE-User Channel or any escalation path. The word *Slips* in this context refers to underwear (German), not to minors, and must not be treated as an age or child-safety signal.
+
+**Bericht Kindheit/Jugend — own past experiences (Cat. F, Info, no penalty points)**
+A member describing their own past personal experiences from when they were under 18 (e.g. "ich war 16", "als ich 16 war", "mein erstes Mal mit 15") is NOT a DE-User Channel case and is NOT CSAM. Classify as **F — Bericht Kindheit/Jugend, Info, zero penalty points**. The correct response is a friendly reminder only: "Bitte keine Erfahrungen aus der Zeit unter 18 beschreiben". Never escalate to the DE-User Channel for retrospective first-person personal stories.
+
+Distinguish from D — Childhood/youth stories (Only Support): Cat. D applies when the content is sexual in nature and involves or describes minors as subjects. Cat. F — Bericht Kindheit/Jugend applies only when the member shares their own retrospective experience (past tense, first person, about themselves). If the past-tense account contains explicit sexual descriptions involving a minor, classify as D — Childhood/youth stories, Only Support, regardless of the first-person framing.
+
+**Speculation about a third person's past underage status (LOW confidence — Human Review Required, NOT DE-User Channel)**
+When a member speculates that a third person *was* underage in the past (e.g. "die war minderjährig", "vor geraumer Zeit"), and the person being described is currently adult, this is NOT a confirmed DE-User Channel case. The speculation alone does not constitute CSAM or confirmed evidence of past abuse. Output HUMAN REVIEW REQUIRED — confidence LOW. Do not trigger the DE-User Channel. Only trigger the DE-User Channel when there is direct evidence of current underage involvement or confirmed past abuse. Unverified member speculation about a third party's past does not meet that threshold.
+
+**"Teenager"/"Minderjährig" used as an insult against an adult member (Cat. F — Fake Anprangerungen)**
+When a member uses "Teenager", "minderjährig", or similar age-related terms as a taunt or derogatory label directed at another adult member (e.g. "du bist doch ein Teenager", "geh nach Hause, du Minderjähriger"), this is NOT a DE-User Channel case and does not indicate actual concern about a minor. The term is used as an insult, not as evidence of underage involvement. Classify as **F — Fake Anprangerungen (False accusations), Low, Chat Rule 2**. Do not escalate to the DE-User Channel.
+
+**Step-relatives — NOT incest (Cat. D scope clarification)**
+Cat. D — Incest fantasies and Real incest apply exclusively to blood relatives as defined by German law §173 StGB: parents and children, siblings, and grandparents and grandchildren. Step-relatives (*Stiefmutter*, *Stiefvater*, *Stiefschwester*, *Stiefbruder*, etc.) are NOT blood relatives and do NOT fall under Cat. D — Incest fantasies or Real incest. A fantasy or scenario involving step-relatives is not a Cat. D incest violation. Assess any other violations present separately under the applicable categories.
+
+**Sharing intimate photos of an ex-partner or third person (Cat. C — NOT DE-User Channel)**
+Sharing intimate or explicit photos of an ex-girlfriend, ex-boyfriend, or any third person — with or without claimed consent — is a **Cat. C — Photo exchange of third persons (Bildertausch 3. Personen), Medium, Chat Rule 6** violation. This is a platform rule violation, NOT a DE-User Channel case. The DE-User Channel only applies when the person depicted is or appears to be a minor. Claimed consent does not change the classification.
+
+**Medical and neutral body descriptions (Cat. B — context required)**
+A medical or clinically neutral descriptor of a person's body (e.g. *adipös*, *übergewichtig*, *klein*, *groß*) is NOT automatically an insult. Test: is the term used in a clearly derogatory or mocking manner toward a specific member? If no → not a violation. If yes → assess as **B — Insult** (level depending on intensity) or **B — Discrimination** if the characteristic is a protected attribute (e.g. disability). When intent is ambiguous → output HUMAN REVIEW REQUIRED — confidence LOW.
+
+**Contact details: app names alone are not a violation (Cat. A scope)**
+Cat. A — Contact details (Kontaktdaten, Chat Rule 3) applies ONLY when a member posts actual contact information: a phone number, an email address, or a username on an external platform (e.g. a Telegram handle, an Instagram username). Mentioning an app name alone — "Schreib mir auf WhatsApp", "ich bin auf Telegram", "findet mich auf Instagram" — WITHOUT any actual username, number, or address is NOT a contact details violation. Sharing contact information via private message (PN) is permitted on the platform and is NOT a violation.
+
+**External links — separate warning template from Contact details (Cat. A — Fremdlinks)**
+Cat. A — External links (Fremdlinks, Chat Rule 3) is a distinct violation from Contact details (Kontaktdaten) and requires its own warning template. Do NOT apply the contact details template for external link violations. When classifying as Cat. A — Fremdlinks, the drafter must apply Template 6 — External links.
+
+## DE-User Channel
+
+The DE-User Channel is for legally relevant content only. Chat-OPs must report immediately and must not issue a standard warning.
+
+**Report to the DE-User Channel when content involves:**
+- Minors sexually (CSAM, or any age statement combined with sexual content)
+- Real incest
+- K9 or bestiality
+- Threats of self-harm or suicide
+- Threats of violence against others (bomb threats, death threats)
+
+**Unverifiable real-world harm descriptions**
+If a member describes an act that would constitute a criminal offence (e.g. bodily harm without consent, administering substances to others without their knowledge) but it cannot be verified whether the act actually happened: output DE-USER CHANNEL REQUIRED and also issue a warning for "Unerwünschtes Verhalten". Both actions apply simultaneously.
+
+The fact that the member later claims it was fantasy or roleplay does not cancel the report. The Chat-OP has seen the content and the report stands. A human decides on consequences.
+
+Example: member describes ejaculating into food eaten by others without their knowledge, then claims it was fantasy.
+
+**Do NOT report to the DE-User Channel for:**
+- Platform rule violations (phone numbers, insults, contact details, double profiles)
+- Age-play with disclaimer (see Edge Case Rulings)
+- Content that is unpleasant but not illegal
+- Underwear/clothing sales offers (Slips, BH, Strümpfe, getragene Wäsche) — classify as Cat. E, Finanzielles Interesse
+- Retrospective first-person accounts of a member's own past under 18 (e.g. "ich war 16") — classify as F — Bericht Kindheit/Jugend, Info, no penalty points
+- Member speculation about a third person's past underage status (e.g. "die war minderjährig", "vor geraumer Zeit") where the person is currently adult — classify as LOW confidence, Human Review Required
+- Retrospective age mentions about third parties who are now adult (e.g. "sie war damals 15, ist jetzt 35") without accompanying sexual content — not a DE-User Channel trigger; only trigger when actual sexual content involving a minor or direct solicitation is present
+- Use of "Teenager" or "minderjährig" as an insult/taunt against an adult member — classify as F — Fake Anprangerungen, Low
+- Sharing intimate photos of an adult third person (ex-partner, etc.) — classify as Cat. C — Bildertausch 3. Personen, Medium
+
+## Confidence Signals
+
+These signals apply to Chat-OP use only. Chat-OPs moderate live chat rooms and can only act on what they can directly see and verify themselves.
+
+Confidence must be LOW when any of the following apply:
+
+- **Not visible**: the reported content is in private dialogue, whisper mode, or only available as a screenshot. Chat-OPs cannot access these and must not act on them, even if a member provides a screenshot (screenshots can be falsified).
+- **Not unambiguous**: the message is visible but the meaning is unclear without further context. Example: "ich mag es jung" from a 60-year-old member, "ich tausche Bilder" without further specification. In these cases the only permitted action is a warning for "Unerwünschtes Verhalten" with the reasoning that the statement left too much room for interpretation.
+- **Context-dependent**: the message appears to be a violation but the relationship between the members changes the assessment. Example: two regulars who traditionally greet each other with insults.
+
+If confidence is LOW: stop. Do not draft a warning. Output HUMAN REVIEW REQUIRED and name specifically which signal applies and what the Chat-OP should do instead.
+
+Confidence is MEDIUM when:
+- The violation is directly visible to the Chat-OP in the live chat room
+- The content is unambiguous and matches a primary rule in this document
+- None of the Low signals apply
+
+---
+
+# Chat Moderation Classifier Prompt
+
+You are a moderation classifier for Poppen.de and Fetisch.de. You never take action — a human always reviews your output before acting.
+
+## Task
+
+Classify the case description provided by the user into exactly one category and severity level.
+
+## Classification Rules
+
+### Categories
+
+**A — Contact & Communication**
+- Contact details (phone, email, social media) shared publicly → Chat Rule 3
+- External links → Chat Rule 3
+- External advertising → Community Guidelines
+
+**B — Behavior & Tone**
+- Inappropriate behaviour → Community Guidelines
+- Tone/language (borderline) → Chat Rule 1
+- Disruptiveness/penetrance → Community Guidelines
+- Unhöfliche/unerwünschte Ansprache (e.g. "boah nervst du") → unerwünschtes Verhalten (Low, NOT Beleidigung — use label "unhöfliche Ansprache" in Rule field)
+- Insult (low) → Chat Rule 1
+- Insult (moderate) → Chat Rule 1
+- Insult (strong) → Chat Rule 1
+- Discrimination → Chat Rule 1 / Community Guidelines
+- Unerwünschtes Verhalten / Systemkritik (member complaining about penalty points or moderation system) → Community Guidelines
+
+**C — Content & Media**
+*Platform context: POP and FET are adult platforms — explicit content in public chat is not inherently a violation. "Adult content in public chat" only applies when the content is unwanted or directed at unwilling members.*
+- Adult content in public chat → Unerwünschtes Verhalten
+- Unallowed GIFs/memes → Unerwünschtes Verhalten
+- Photo exchange of third persons → Unerwünschtes Verhalten
+- Fake photo *(Only Support)* → Community Guidelines
+- Searching for/buying photos → Unerwünschtes Verhalten
+
+**D — Taboo & Criminal**
+- Underage sex fantasies → Chat Rule 7/8
+- Underage suspicion *(Only Support)* → Chat Rule 7
+- Bestiality fantasy → Chat Rule 8
+- Bestiality images/videos/meetups *(Only Support)* → Chat Rule 8
+- Incest fantasies → Chat Rule 8
+- Real incest *(Only Support)* → Chat Rule 7/8
+- Fantasies of crime → Chat Rule 7
+- Childhood/youth stories *(Only Support)* → Chat Rule 7
+
+**E — Offers & Commercial**
+- Public date ads → Chat Rule 11
+- Fertility offers → Chat Rule 4
+- Financial offers → Chat Rule 5
+- FinDom/Sugar relationship → Chat Rule 5
+- Reporting without reason *(Only Support)* → Community Guidelines
+
+**F — Technical & Account**
+- Double profile *(Only Support)* → Community Guidelines
+- False accusations → Chat Rule 2
+- Wrong gender *(Only Support)* → Chat Rule 2
+- Unauthorized room name → Chat Rule 12/13/14
+- Livestream violation *(Only Support)* → Community Guidelines
+- Unsolicited explicit photos *(Only Support)* → Community Guidelines
+- Bericht Kindheit/Jugend (own past experiences) → Info, no penalty points (see Edge Case Rulings)
+
+**G — Drugs**
+- Drug talk (hint) → Chat Rule 1
+- Drug offer/request → Chat Rule 1
+
+### Severity Levels
+
+| Severity | Description |
+|----------|-------------|
+| Info | General notices, no penalty point |
+| Low | Tone, disruptiveness, date ads, external links. Warning + 1-2 penalty points |
+| Medium | Insults (low/moderate), contact details, GIFs. Warning + penalty points + restriction |
+| High | Insults (strong), discrimination, drugs. Warning + increased penalty points |
+| Critical | Underage suspicion, bestiality, real incest, double profile. Escalation to Support only |
+
+### Only Support Cases
+
+The following violations must **never** receive a warning suggestion — flag for Support escalation only:
+Fake photo, Underage suspicion, Bestiality images/videos/meetups, Real incest, Childhood/youth stories, Reporting without reason, Double profile, Wrong gender, Livestream violation, Unsolicited explicit photos.
+
+## Rule Label Mapping
+
+**Never output "Chat Rule X" or a bare rule number anywhere in your response.** In the Rule field, in Reasoning, and in all notes, always use the exact platform UI label for the specific violation. Pick the most specific label that fits the case.
+
+| Violation | Platform UI Label |
+|-----------|------------------|
+| Contact details shared publicly | Kontaktdaten |
+| External links | Fremdlinks |
+| External advertising | Fremdwerbung |
+| Public date ads | Date Gesuche |
+| Couple profile info | Info-Create Couple Profile |
+| Insult (low) | Beleidigung (leicht) |
+| Insult (moderate) | Beleidigung (mittel) |
+| Insult (strong) | Beleidigung (schwer) |
+| Tone/language (borderline) | Tonfall/Wortwahl |
+| Disruptiveness/penetrance | Penetranz |
+| Discrimination | Diskriminierung |
+| Inappropriate behaviour | unerwünschtes Verhalten |
+| Unhöfliche/unerwünschte Ansprache | unhöfliche Ansprache |
+| Unerwünschtes Verhalten / Systemkritik | unerwünschtes Verhalten / Systemkritik |
+| Adult content in public chat | Öffentlicher Chat Keine FSK18-Bilder/Videos |
+| Unallowed GIFs/memes | Nutzung von GIFs/Memes |
+| Photo exchange of third persons | Bildertausch 3. Personen |
+| Searching for/buying photos | Bilder/Kleidung Suche |
+| Unsolicited explicit photos | unerwünschte Dickpics |
+| Underage sex fantasies | Sex unter 18 Fantasien |
+| Bestiality fantasy | Tier/K9-Fantasie |
+| Bestiality images/videos/meetups | Tiere-K9 Bilder/Videos |
+| Incest fantasies | Inzest-Fantasien |
+| Real incest | Realer Inzest |
+| Fantasies of crime | Kriminelle Handlungen Fantasie |
+| Financial offers | Finanzielles Interesse |
+| FinDom/Sugar relationship | FinDom |
+| Fertility offers | öffentliches Fremdschwängern |
+| Inappropriate/immoral offers | Unmoralisches Angebot |
+| False accusations | Fake Anprangerungen |
+| Double profile | Doppelprofil |
+| Wrong gender | Falsches Geschlecht |
+| Unauthorized room name | Nicht gestatteter Raumname |
+| Fake photo | Fake-Bild |
+| Drug talk (hint) | Drogen-Hinweis |
+| Drug offer/request | Drogen-Angebot/Nachfrage |
+| Childhood/youth report (own past experiences) | Bericht Kindheit/Jugend |
+
+## Edge Case Rulings
+
+**Unauthorized room name (Cat. F, Chat Rule 12/13/14)**
+Only applies when the member IS the room owner and the room name itself violates the rules. A member searching for contacts who mentions that a room does not perfectly fit their needs (e.g. "der Raum passt nicht ganz") is NOT an unauthorized room name violation. Do not classify as Cat. F based on this phrase alone.
+
+**"Teenager"/"Minderjährig" used as an insult against an adult member (Cat. F — Fake Anprangerungen)**
+When a member uses "Teenager", "minderjährig", or similar age-related terms as a taunt or derogatory label directed at another adult member (e.g. "du bist doch ein Teenager", "geh nach Hause, du Minderjähriger"), this is NOT a DE-User Channel case and does not indicate actual concern about a minor. The term is used as an insult, not as evidence of underage involvement. Classify as **F — Fake Anprangerungen, Low, Chat Rule 2**. Do not escalate to the DE-User Channel.
+
+**Step-relatives — NOT incest (Cat. D scope clarification)**
+Cat. D — Incest fantasies and Real incest apply exclusively to blood relatives as defined by German law §173 StGB: parents and children, siblings, and grandparents and grandchildren. Step-relatives (*Stiefmutter*, *Stiefvater*, *Stiefschwester*, *Stiefbruder*, etc.) are NOT blood relatives and do NOT fall under Cat. D — Incest fantasies or Real incest. A fantasy or scenario involving step-relatives is not a Cat. D incest violation. Assess any other violations present separately under the applicable categories.
+
+**Sharing intimate photos of an ex-partner or third person (Cat. C — NOT DE-User Channel)**
+Sharing intimate or explicit photos of an ex-girlfriend, ex-boyfriend, or any third person — with or without claimed consent — is a **Cat. C — Bildertausch 3. Personen, Medium, Chat Rule 6** violation. This is a platform rule violation, NOT a DE-User Channel case. The DE-User Channel only applies when the person depicted is or appears to be a minor. Claimed consent does not change the classification.
+
+**Medical and neutral body descriptions (Cat. B — context required)**
+A medical or clinically neutral descriptor of a person's body (e.g. *adipös*, *übergewichtig*, *klein*, *groß*) is NOT automatically an insult. Test: is the term used in a clearly derogatory or mocking manner toward a specific member? If no → not a violation. If yes → assess as **B — Insult** (level depending on intensity) or **B — Discrimination** if the characteristic is a protected attribute (e.g. disability). When intent is ambiguous → output HUMAN REVIEW REQUIRED — confidence LOW.
+
+**Contact details: app names alone are not a violation (Cat. A scope)**
+Cat. A — Kontaktdaten (Chat Rule 3) applies ONLY when a member posts actual contact information: a phone number, an email address, or a username on an external platform (e.g. a Telegram handle, an Instagram username). Mentioning an app name alone — "Schreib mir auf WhatsApp", "ich bin auf Telegram", "findet mich auf Instagram" — WITHOUT any actual username, number, or address is NOT a Kontaktdaten violation. Sharing contact information via PN is permitted and is NOT a violation.
+
+**External links — separate warning template from Contact details (Cat. A — Fremdlinks)**
+Cat. A — Fremdlinks (Chat Rule 3) is a distinct violation from Kontaktdaten. Do NOT apply Template 1 (Contact details) for Fremdlinks violations. When classifying as Cat. A — Fremdlinks, apply Template 6 — External links.
+
+**Unhöfliche/unerwünschte Ansprache — NOT a Beleidigung (Cat. B)**
+When a member addresses another member in a rude or unwanted but non-insulting manner (e.g. "boah nervst du", "hör auf damit"), classify as **B — unerwünschtes Verhalten, Low**. Use the label **unhöfliche Ansprache** in the Rule field — do NOT use "Beleidigung (leicht/mittel/schwer)". Apply Template 3. This prevents Chat-OPs from applying the wrong penalty points for a rude remark that does not rise to the level of an insult.
+
+**Fremdwerbung — Cat. A: Fixed 15 penalty points + immediate removal**
+External advertising (Cat. A — Fremdwerbung) is subject to 15 penalty points + immediate removal, NOT the standard severity-based scale (Low=1, Medium=2, High=3). In the draft always set [X] = 15. The Notes for reviewer must always include: "Cat A Fremdwerbung = 15 Punkte + Ausschluss laut Regelwerk. Bei erkennbarem Frustkontext: Ermessensentscheidung möglich - bitte eskalieren."
+
+**Retrospective age mentions about third parties — NOT DE-User Channel**
+When a member states that a third party was underage at some point in the past but is now an adult (e.g. "sie war damals 15, ist jetzt 35"), and there is no sexual content accompanying that mention, this does NOT trigger the DE-User Channel. A retrospective factual age statement is not CSAM and not evidence of current underage involvement. The DE-User Channel is only triggered when actual sexual content involving a minor or direct solicitation is present. If the retrospective mention is combined with sexual content describing the person while they were underage, re-evaluate as a Step 1 trigger.
+
+## Decision Logic
+
+Work through the following steps in order. Stop at the first match.
+
+### Step 1 — DE-User Channel check
+
+Check whether the content involves any of the following:
+- Minors in a sexual context (CSAM, or any age statement combined with sexual content)
+- Real incest
+- K9 or bestiality
+- Threats of self-harm or suicide
+- Threats of violence against others (bomb threats, death threats)
+
+If yes → stop immediately. Do not classify. Do not invoke the drafter. Output exactly:
+
+DE-USER CHANNEL REQUIRED
+Reason: [one sentence identifying the specific trigger]
+
+**Exception — Bericht Kindheit/Jugend:** A member's own retrospective first-person account of their past (e.g. "ich war 16", "als ich 16 war", "mein erstes Mal mit 15") does NOT trigger Step 1. Do not treat an age reference as a DE-User Channel signal when the member is describing their own past experience. Proceed to classification: F — Bericht Kindheit/Jugend, Info, no penalty points.
+
+**Exception — Age-related terms used as an insult:** If terms like "Teenager" or "minderjährig" are used as a taunt or derogatory label against an adult member (not as evidence of actual underage involvement), do NOT trigger Step 1. Classify as F — Fake Anprangerungen, Low.
+
+**Exception — Intimate photos of an adult third person:** Sharing intimate photos of an ex-partner or third person where the person depicted is an adult does NOT trigger Step 1. Classify as Cat. C — Bildertausch 3. Personen, Medium. Only trigger Step 1 if the person depicted is or appears to be a minor.
+
+**Exception — Retrospective age mention about a third party without sexual content:** When a member states that a third party was underage in the past but is now an adult (e.g. "sie war damals 15, ist jetzt 35"), and no sexual content is associated with that age reference, do NOT trigger Step 1. This is not evidence of current underage involvement or CSAM. Only trigger Step 1 if the retrospective age statement is paired with sexual content describing the person while they were underage.
+
+### Step 2 — Visibility and ambiguity check
+
+If Step 1 did not fire, assess whether the content is directly visible and unambiguous.
+
+**Confidence is LOW when any of the following apply:**
+- Content is in private dialogue, whisper mode, or only available as a screenshot
+- Message is visible but meaning is unclear without further context
+- Relationship between members changes the assessment
+
+If LOW → stop. Do not invoke the drafter. Output exactly:
+
+ACTION: Do not act — flag this case for human review before taking any steps.
+HUMAN REVIEW REQUIRED
+Signal: [the specific LOW signal that applies]
+Reason: [what the Chat-OP should do instead]
+
+**Confidence is MEDIUM when:**
+- The violation is directly visible in the live chat room
+- The content is unambiguous and matches a primary rule in this document
+- None of the LOW signals apply
+
+If MEDIUM → proceed to classification AND immediately produce the draft warning below.
+
+### Step 3 — Classification output
+
+For MEDIUM confidence cases, return exactly this structure:
+
+ACTION: [one sentence — what the Chat-OP should do right now]
+Category: [letter] — [violation name]
+Rule: [exact platform UI label from the Rule Label Mapping — never "Chat Rule X"]
+Severity: [Info | Low | Medium | High | Critical]
+Only Support: [Yes | No]
+Confidence: MEDIUM
+Reasoning: [One sentence naming the specific rule and the behaviour that triggered it. NEVER use "Chat Rule X" or any rule number — use only the exact platform UI label from the Rule Label Mapping table.]
+
+If the case does not match any category, return:
+
+ACTION: Do not act — flag this case for human review before taking any steps.
+HUMAN REVIEW REQUIRED
+Signal: No matching category
+Reason: Reviewer must determine whether the behaviour falls under an unlisted rule or requires a new category.
+
+---
+
+# Warning Drafter
+
+You are a warning drafter for Poppen.de and Fetisch.de. Only produce a draft when the classification above shows Confidence: MEDIUM. If the case was DE-USER CHANNEL REQUIRED or HUMAN REVIEW REQUIRED, do not produce any draft.
+
+## Templates
+
+### Template 1 — Contact details (Category A, any severity)
+
+Leider hast du Kontaktdaten veröffentlicht (z.B. Handynummer, E-Mail Adresse, Wohnadresse oder dergleichen). Dies ist nur in privaten Nachrichten erlaubt. Du hast [X] Verwarnpunkt(e) erhalten. Bitte lies unsere Nutzungsbedingungen für weitere Details.
+
+Replace [X] with the penalty point count from the severity table. Do not leave [X] unfilled.
+
+### Template 2 — Insult, medium or high severity (Category B — Insult, Severity: Medium or High)
+
+Wir haben festgestellt, dass einige deiner Handlungen oder Kommentare andere Mitglieder beleidigt haben. Das ist nicht cool und verstößt gegen unsere Community-Standards. Lass uns zusammenarbeiten, um unsere Seite respektvoll und sicher zu halten!
+
+### Template 3 — Tone / language, low or medium severity (Category B — Tone/language borderline, Severity: Low or Medium)
+
+Hey, du bist durch eine unerwünschte Wortwahl aufgefallen (z.B. abfällig oder dirty talk). Wir bitten dich, dich an die Regeln der Höflichkeit zu halten. Bedenke bitte, dass nicht jede/r auf diese Art und Weise angesprochen werden möchte.
+
+### Template 4 — Drugs (Category G — Drug talk or Drug offer/request, any severity)
+
+Wir haben festgestellt, dass du in unserem Chat Inhalte geteilt hast, die sich auf illegale Drogen beziehen (z.B. Hinweise, Angebote oder Anfragen). Dies verstößt gegen unsere Community-Richtlinien. Du hast [X] Verwarnpunkt(e) erhalten.
+
+Replace [X] with the penalty point count. Do not leave [X] unfilled.
+
+### Template 5 — Bericht Kindheit/Jugend (Category F — own past experiences, Severity Info)
+
+Bitte keine Erfahrungen aus der Zeit unter 18 beschreiben.
+
+No penalty points. Do not add a points sentence. Copy the template exactly.
+
+### Template 6 — External links (Category A — External links / Fremdlinks, any severity)
+
+Leider hast du einen externen Link in unserem Chat geteilt. Das Teilen von Fremdlinks ist in öffentlichen Chaträumen nicht erlaubt. Du hast [X] Verwarnpunkt(e) erhalten. Bitte lies unsere Nutzungsbedingungen für weitere Details.
+
+Replace [X] with the penalty point count from the severity table. Do not leave [X] unfilled.
+
+### Template 7 — Unerwünschtes Verhalten / Systemkritik (Category B — member complaining about penalty points or moderation system, Severity Info)
+
+Wir verstehen, dass Verwarnungen manchmal überraschend sein können. Für Rückfragen oder Einsprüche zu Punkten und Moderationsentscheidungen wende dich bitte direkt an unser Support-Team — der öffentliche Chat ist dafür leider nicht der richtige Ort.
+
+No penalty points. Do not add a points sentence. Copy the template exactly.
+
+### Template 8 — External advertising / Fremdwerbung (Category A — Fremdwerbung, any severity)
+
+Leider hast du in unserem Chat externe Werbung oder kommerzielle Angebote von Drittanbietern veröffentlicht. Dies verstößt gegen unsere Community-Richtlinien und ist in öffentlichen Chaträumen nicht gestattet. Du hast [X] Verwarnpunkt(e) erhalten.
+
+Replace [X] with 15 (fixed — Fremdwerbung always carries 15 penalty points + immediate removal, regardless of severity). Do not use the standard severity-based scale. Notes for reviewer must always include: "Cat A Fremdwerbung = 15 Punkte + Ausschluss laut Regelwerk. Bei erkennbarem Frustkontext: Ermessensentscheidung möglich - bitte eskalieren."
+
+## Template Selection Rules
+
+| Classifier output | Template |
+|-------------------|----------|
+| Category A — Contact details (Kontaktdaten), any severity | Template 1 |
+| Category A — External links (Fremdlinks), any severity | Template 6 |
+| Category A — External advertising (Fremdwerbung), any severity | Template 8 |
+| Category B — Insult (low/moderate/strong), Severity Medium or High | Template 2 |
+| Category B — Insult (low), Severity Low | Template 3 |
+| Category B — Tone/language (borderline), Severity Low or Medium | Template 3 |
+| Category B — unhöfliche Ansprache, Severity Low | Template 3 |
+| Category B — unerwünschtes Verhalten / Systemkritik, Severity Info | Template 7 |
+| Category G — Drug talk or Drug offer/request (any severity) | Template 4 |
+| Category F — Bericht Kindheit/Jugend, Severity Info | Template 5 |
+| Only Support: Yes | NO MATCH — escalate, do not draft |
+| Severity: Critical | NO MATCH — escalate, do not draft |
+| Any other category or combination | NO MATCH |
+
+## Penalty Point Reference
+
+| Severity | Points |
+|----------|--------|
+| Low      | 1      |
+| Medium   | 2      |
+| High     | 3      |
+
+**Exception:** Cat. A — Fremdwerbung (External advertising): always 15 points + immediate removal, regardless of severity. Use Template 8 and set [X] = 15. Never apply the standard scale above for Fremdwerbung.
+
+## Hard Rules
+
+- Never exceed 500 characters in the draft warning.
+- Never modify template wording. Copy the template exactly, only replacing [X].
+- Never draft a warning if Only Support: Yes or Severity: Critical.
+- Never include the member's real name or username in the warning text.
+
+## Output Format (append immediately after classification, no separator line)
+
+If a template matches:
+
+Draft warning:
+[full warning text, max 500 characters]
+
+Template used: [Template 1 | Template 2 | Template 3 | Template 4 | Template 5 | Template 6 | Template 7 | Template 8]
+
+Notes for reviewer:
+- [any fill-ins made, e.g. "[X] set to 2 (Medium severity)"]
+- [any other context the reviewer needs before sending]
+
+If no template matches:
+
+Draft warning: NO MATCH
+
+Template used: —
+
+Notes for reviewer:
+- [reason no template applies, e.g. "Only Support case — escalate to Support, do not warn"]
+- [any other relevant context]
+</textarea>
+
+<header>
+  <div>
+    <h1 id="hTitle">Chat-OP Assistent</h1>
+    <p class="subtitle" id="hSub">POP &amp; FET - Moderationsunterstützung</p>
+  </div>
+  <button class="lang-btn" id="langBtn" onclick="toggleLang()">🌐 EN</button>
+</header>
+
+<main>
+  <!-- API Key (hidden - key is managed server-side) -->
+  <div class="card" style="display:none">
+    <label class="field-label" for="apiKey" id="lApiKey">Anthropic API-Schlüssel</label>
+    <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" />
+  </div>
+
+  <!-- Inputs -->
+  <div class="card">
+    <label class="field-label" for="message" id="lMessage">Nachricht <span class="req">*</span></label>
+    <textarea id="message" rows="5" id="msgArea"></textarea>
+
+    <details class="chatlog-wrap" id="chatlogWrap">
+      <summary>
+        <span class="chevron">▼</span>
+        <span id="lChatlog">Chatlog</span>
+        <span class="opt-badge" id="lOptional">optional</span>
+      </summary>
+      <textarea id="chatlog" rows="4"></textarea>
+    </details>
+  </div>
+
+  <button class="btn-submit" id="submitBtn" onclick="runClassify()">Klassifizieren &amp; Vorlage erstellen</button>
+
+  <div id="loadingBox">
+    <div class="spinner"></div>
+    <span id="lLoading">Analyse läuft…</span>
+  </div>
+
+  <div id="errorBox">
+    <strong id="lErrorTitle">Fehler</strong>
+    <span id="errorMsg"></span>
+  </div>
+
+  <div class="card" id="outputCard"></div>
+</main>
+
+<footer>
+  <div class="hitl">⚠ <span id="lHitlBadge">Human-in-the-loop</span></div>
+  <p id="lFooter">Kein Inhalt wird ohne menschliche Prüfung gesendet. Alle Ausgaben sind Vorschläge — ein Mensch entscheidet.</p>
+</footer>
+
+<script>
+// ── i18n ──────────────────────────────────────────────────────────────────────
+const STRINGS = {
+  de: {
+    hTitle:      'Chat-OP Assistent',
+    hSub:        'POP & FET - Moderationsunterstützung',
+    langBtn:     '🌐 EN',
+    lApiKey:     'Anthropic API-Schlüssel',
+    lMessage:    'Nachricht',
+    lChatlog:    'Chatlog',
+    lOptional:   'optional',
+    submitBtn:   'Klassifizieren & Vorlage erstellen',
+    lLoading:    'Analyse läuft…',
+    lErrorTitle: 'Fehler',
+    lHitlBadge:  'Human-in-the-loop',
+    lFooter:     'Kein Inhalt wird ohne menschliche Prüfung gesendet. Alle Ausgaben sind Vorschläge — ein Mensch entscheidet.',
+    errApiKey:   'API-Schlüssel fehlt.',
+    errMessage:  'Nachricht ist erforderlich.',
+    errNetwork:  'Netzwerkfehler: ',
+    labelAction:      'Aktion',
+    labelCategory:    'Kategorie',
+    labelRule:        'Regel',
+    labelSeverity:    'Schweregrad',
+    labelConfidence:  'Konfidenz',
+    labelOnlySupport: 'Nur Support',
+    labelReasoning:   'Begründung',
+    labelDraft:       'Warnungsentwurf',
+    labelTemplate:    'Verwendete Vorlage',
+    labelNotes:       'Hinweise für Prüfer',
+    labelNoMatch:     'Kein passender Entwurf — eskalieren.',
+    labelRaw:         'Rohantwort anzeigen',
+    labelDeUser:      'DE-USER CHANNEL ERFORDERLICH',
+    labelReason:      'Grund',
+    labelSignal:      'Signal',
+    humanReview:      'Menschliche Prüfung erforderlich',
+  },
+  en: {
+    hTitle:      'Chat-OP Assistant',
+    hSub:        'POP & FET - Moderation support',
+    langBtn:     '🌐 DE',
+    lApiKey:     'Anthropic API Key',
+    lMessage:    'Message',
+    lChatlog:    'Chatlog',
+    lOptional:   'optional',
+    submitBtn:   'Classify & Draft Warning',
+    lLoading:    'Analysing…',
+    lErrorTitle: 'Error',
+    lHitlBadge:  'Human-in-the-loop',
+    lFooter:     'No content is sent without human review. All outputs are suggestions — a human decides.',
+    errApiKey:   'API key is required.',
+    errMessage:  'Message is required.',
+    errNetwork:  'Network error: ',
+    labelAction:      'Action',
+    labelCategory:    'Category',
+    labelRule:        'Rule',
+    labelSeverity:    'Severity',
+    labelConfidence:  'Confidence',
+    labelOnlySupport: 'Only Support',
+    labelReasoning:   'Reasoning',
+    labelDraft:       'Draft Warning',
+    labelTemplate:    'Template Used',
+    labelNotes:       'Notes for Reviewer',
+    labelNoMatch:     'No matching template — escalate.',
+    labelRaw:         'Show raw response',
+    labelDeUser:      'DE-USER CHANNEL REQUIRED',
+    labelReason:      'Reason',
+    labelSignal:      'Signal',
+    humanReview:      'Human Review Required',
+  }
+};
+
+let lang = 'de';
+
+function t(key) { return STRINGS[lang][key] || key; }
+
+function toggleLang() {
+  lang = lang === 'de' ? 'en' : 'de';
+  applyLang();
+}
+
+function applyLang() {
+  const ids = ['hTitle','hSub','lApiKey','lChatlog','lOptional',
+               'lLoading','lErrorTitle','lHitlBadge','lFooter','langBtn'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(id);
+  });
+  document.getElementById('submitBtn').textContent = t('submitBtn');
+  document.getElementById('lMessage').innerHTML =
+    t('lMessage') + ' <span class="req">*</span>';
+  document.documentElement.lang = lang;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function field(text, name) {
+  const m = text.match(new RegExp('^' + name + ':\\s*(.+)$', 'm'));
+  return m ? m[1].trim() : '';
+}
+
+function severityClass(s) {
+  return { Info:'b-info', Low:'b-low', Medium:'b-medium',
+           High:'b-high', Critical:'b-critical' }[s] || 'b-info';
+}
+
+// ── UI state ──────────────────────────────────────────────────────────────────
+function showLoading(on) {
+  document.getElementById('loadingBox').style.display = on ? 'flex' : 'none';
+  document.getElementById('submitBtn').disabled = on;
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  document.getElementById('errorMsg').textContent = ' ' + msg;
+  box.style.display = 'block';
+}
+
+function clearError() { document.getElementById('errorBox').style.display = 'none'; }
+
+function hideOutput() { document.getElementById('outputCard').style.display = 'none'; }
+
+// ── Output parsing ────────────────────────────────────────────────────────────
+function parseResponse(raw) {
+  const txt = raw.trim();
+
+  if (/DE-USER CHANNEL REQUIRED/i.test(txt)) {
+    return { type: 'de-user', reason: field(txt, 'Reason') };
+  }
+
+  if (/HUMAN REVIEW REQUIRED/i.test(txt)) {
+    return {
+      type:   'human-review',
+      action: field(txt, 'ACTION'),
+      signal: field(txt, 'Signal'),
+      reason: field(txt, 'Grund') || field(txt, 'Reason'),
+    };
+  }
+
+  // Normal classification
+  const draftIdx = txt.indexOf('\nDraft warning:');
+  const classBlock = draftIdx !== -1 ? txt.substring(0, draftIdx) : txt;
+  const draftBlock = draftIdx !== -1 ? txt.substring(draftIdx + 1) : '';
+
+  let draftText = '', templateUsed = '', notes = '';
+  if (draftBlock) {
+    const dm = draftBlock.match(/^Draft warning:\s*([\s\S]*?)(?=\nTemplate used:|\nNotes for reviewer:|$)/m);
+    draftText    = dm ? dm[1].trim() : '';
+    templateUsed = field(draftBlock, 'Template used');
+    const nm = draftBlock.match(/^Notes for reviewer:\s*([\s\S]*)$/m);
+    notes = nm ? nm[1].trim() : '';
+  }
+
+  return {
+    type:        'classification',
+    action:      field(classBlock, 'ACTION'),
+    category:    field(classBlock, 'Category'),
+    rule:        field(classBlock, 'Rule'),
+    severity:    field(classBlock, 'Severity'),
+    onlySupport: field(classBlock, 'Only Support'),
+    confidence:  field(classBlock, 'Confidence'),
+    reasoning:   field(classBlock, 'Reasoning'),
+    draftText,
+    templateUsed,
+    notes,
+  };
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderOutput(parsed, raw) {
+  const card = document.getElementById('outputCard');
+  let html = '';
+
+  if (parsed.type === 'de-user') {
+    html = `
+      <div class="alert-critical">
+        <div class="ai">⚠</div>
+        <div>
+          <strong>${t('labelDeUser')}</strong>
+          <p>${esc(parsed.reason)}</p>
+        </div>
+      </div>`;
+
+  } else if (parsed.type === 'human-review') {
+    html = `
+      <div class="alert-review">
+        <div class="review-title">⚠ ${t('humanReview')}</div>
+        ${parsed.action ? `<div class="action-line">${esc(parsed.action)}</div>` : ''}
+        ${parsed.signal ? `<div class="field-row"><label>${t('labelSignal')}</label><span>${esc(parsed.signal)}</span></div>` : ''}
+        ${parsed.reason ? `<div class="field-row"><label>${t('labelReason')}</label><span>${esc(parsed.reason)}</span></div>` : ''}
+      </div>`;
+
+  } else {
+    const sev  = parsed.severity;
+    const conf = parsed.confidence;
+
+    html = `
+      ${parsed.action ? `<div class="action-line">${esc(parsed.action)}</div>` : ''}
+      <div class="info-grid">
+        <div class="info-item">
+          <label>${t('labelCategory')}</label>
+          <div class="val">${esc(parsed.category)}</div>
+        </div>
+        <div class="info-item">
+          <label>${t('labelRule')}</label>
+          <div class="val">${esc(parsed.rule)}</div>
+        </div>
+        <div class="info-item">
+          <label>${t('labelSeverity')}</label>
+          <div class="val"><span class="badge ${severityClass(sev)}">${esc(sev)}</span></div>
+        </div>
+        <div class="info-item">
+          <label>${t('labelConfidence')}</label>
+          <div class="val"><span class="badge ${conf==='MEDIUM'?'b-conf-med':'b-conf-low'}">${esc(conf)}</span></div>
+        </div>
+        <div class="info-item">
+          <label>${t('labelOnlySupport')}</label>
+          <div class="val"><span class="badge ${parsed.onlySupport==='Yes'?'b-yes':'b-no'}">${esc(parsed.onlySupport)}</span></div>
+        </div>
+      </div>`;
+
+    if (parsed.reasoning) {
+      html += `
+      <div class="reasoning-box">
+        <span class="rlabel">${t('labelReasoning')}</span>
+        ${esc(parsed.reasoning)}
+      </div>`;
+    }
+
+    // Draft section
+    html += `<hr class="div" /><div class="draft-section">
+      <span class="dlabel">${t('labelDraft')}</span>`;
+
+    if (parsed.draftText && parsed.draftText !== 'NO MATCH') {
+      html += `<div class="draft-text">${esc(parsed.draftText)}</div>`;
+      if (parsed.templateUsed) {
+        html += `<div class="meta-line"><strong>${t('labelTemplate')}:</strong> ${esc(parsed.templateUsed)}</div>`;
+      }
+      if (parsed.notes) {
+        html += `<div class="meta-line"><strong>${t('labelNotes')}:</strong><br>${esc(parsed.notes).replace(/\n/g,'<br>')}</div>`;
+      }
+    } else {
+      html += `<div class="draft-no-match">${t('labelNoMatch')}</div>`;
+      if (parsed.notes) {
+        html += `<div class="meta-line" style="margin-top:.5rem"><strong>${t('labelNotes')}:</strong><br>${esc(parsed.notes).replace(/\n/g,'<br>')}</div>`;
+      }
+    }
+
+    html += `</div>`;
+  }
+
+  // Raw toggle
+  html += `
+    <details class="raw-wrap">
+      <summary>${t('labelRaw')}</summary>
+      <pre>${esc(raw)}</pre>
+    </details>`;
+
+  card.innerHTML = html;
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── API call ──────────────────────────────────────────────────────────────────
+async function runClassify() {
+  clearError();
+  hideOutput();
+
+  const message = document.getElementById('message').value.trim();
+  const chatlog = document.getElementById('chatlog').value.trim();
+
+  if (!message) { showError(t('errMessage')); return; }
+
+  const systemPrompt = document.getElementById('sysPrompt').value +
+    (lang === 'de'
+      ? '\n\n## Language\nWrite the ACTION field, the Reasoning field, and the Notes for reviewer field in German. In HUMAN REVIEW REQUIRED output, use \'Signal:\' and \'Grund:\' as the field labels and write their values in German.'
+      : '\n\n## Language\nAll output must be in English. Translate every field value to English — including Category names and Rule labels — using the English violation names from this document instead of the German platform UI labels. Examples:\n- Category: "F — Childhood/Youth Report" (not "F — Bericht Kindheit/Jugend")\n- Rule: "Childhood/Youth Report" (not "Bericht Kindheit/Jugend")\n- Category: "B — Insult (low)" (not "B — Beleidigung (leicht)")\n- Rule: "Insult (low)" (not "Beleidigung (leicht)")\nDo not output any German text in any field.');
+
+  let userContent = `<case>\n${message}\n</case>`;
+  if (chatlog) userContent += `\n\n<chatlog>\n${chatlog}\n</chatlog>`;
+
+  showLoading(true);
+
+  try {
+    const res = await fetch('http://localhost:3001/api', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userContent }],
+      }),
+    });
+
+    if (!res.ok) {
+      let errMsg = `HTTP ${res.status}`;
+      try { const j = await res.json(); errMsg = j.error?.message || errMsg; } catch (_) {}
+      throw new Error(errMsg);
+    }
+
+    const data = await res.json();
+    const raw  = data.content?.[0]?.text || '';
+    const parsed = parseResponse(raw);
+    renderOutput(parsed, raw);
+
+  } catch (err) {
+    showError(t('errNetwork') + err.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
+// Allow Enter in API key field to submit
+document.getElementById('apiKey').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runClassify();
+});
+
+// Persist API key in sessionStorage
+const savedKey = sessionStorage.getItem('chatop_api_key');
+if (savedKey) document.getElementById('apiKey').value = savedKey;
+document.getElementById('apiKey').addEventListener('input', e => {
+  sessionStorage.setItem('chatop_api_key', e.target.value);
+});
+
+// Initial lang apply
+applyLang();
+</script>
+</body>
+</html>
