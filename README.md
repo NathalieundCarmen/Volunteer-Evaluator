@@ -1,35 +1,218 @@
-# Volunteer-Evaluator
-AI-assisted moderation decision support tool for volunteer moderators on POP and FET . Built with Claude API. Supports forum and chat moderation. Human-in-the-loop: AI recommends, humans decide. Developed as part of an AI learning project at IdeaWise Group.
-# Moderation Assistant
+# Volunteer Evaluator
 
-AI-assisted triage and warning drafting for moderation at POP and FET. Classifier reads rules from CLAUDE.md. Drafter writes warnings from templates. Low-confidence cases skip drafting and go straight to human review.
+AI-assisted moderation support for volunteer teams at POP and FET.
 
-Related Jira: DFT-11467
+The project provides browser-based moderation assistants that help volunteers classify content, identify rule violations, recommend moderation actions and support escalation workflows.
 
-## What it does
+The assistants are decision-support tools only.
 
-- Takes a case description
-- Returns ACTION (one sentence at the top), category, severity, confidence
-- If confidence is High or Medium: drafts a warning
-- If confidence is Low: flags for human review without drafting
-- If DE-User Channel signals fire: stops immediately, no classification
+**Human moderators always make the final decision.**
 
-## How to run
+---
 
-1. Open a terminal in this folder: `cd C:\Users\NatiG\Projects\moderation-assistant`
-2. Start Claude Code: `claude`
-3. Tell Claude: "Read prompts/classify.md. I will paste cases one at a time. For each, apply classify and - if confidence is High or Medium - also apply prompts/draft.md."
-4. Paste a case. Read the structured output. Review before sending any warning.
+## Project Goals
 
-## Important
+The Volunteer Evaluator was developed to:
 
-- Never send a draft warning without human review. The drafter is a drafter, not an enforcer.
-- Hard No list in CLAUDE.md — items there must never be drafted automatically.
-- Update CLAUDE.md when rules change. No code changes needed.
+- improve moderation consistency
+- reduce review time for common cases
+- support volunteer moderators and chat operators
+- provide structured moderation recommendations
+- document moderation reasoning transparently
 
-## Known gaps (Sprint 3 end)
+---
 
-- No warning templates for Cat C (photo exchange) and Cat F (false accusations) — drafter runs but produces no output
-- Output language is English — German language support parked for Sprint 4
-- No live queue integration — cases must be pasted manually
-- No external interface — currently requires Claude Code; volunteers cannot run this without access
+## Components
+
+### Forum Moderation Assistant
+
+Supports volunteer forum moderators.
+
+**Input**
+- Forum post content
+- Optional thread context
+
+**Output**
+- Incident classification
+- Recommended moderation actions
+- Escalation guidance
+- Alternative classifications
+- Uncertainty assessment
+
+Typical actions include:
+
+- Hide post
+- Edit post
+- Issue warning
+- Escalate to User Reports Channel
+
+---
+
+### Chat-OP Assistant
+
+Supports volunteer chat operators.
+
+**Input**
+- Chat message
+- Optional chatlog context
+
+**Output**
+- Incident classification
+- Recommended moderation actions
+- Escalation guidance
+- Draft warning text
+- Uncertainty assessment
+
+Typical actions include:
+
+- Issue warning
+- Escalate to User Reports Channel
+- Human review recommendation
+
+---
+
+## Human-in-the-Loop Principle
+
+The assistants provide recommendations only.
+
+Volunteers remain responsible for:
+
+- reviewing all outputs
+- selecting appropriate actions
+- issuing warnings
+- escalating cases when required
+- applying platform policies correctly
+
+No moderation action should be taken solely on the basis of AI output.
+
+---
+
+## Escalation Workflows
+
+Certain high-risk cases require additional escalation.
+
+Examples include:
+
+- Minors in sexual context
+- Real incest
+- Bestiality / K9 content
+- Self-harm threats
+- Violence threats
+
+Escalation recommendations are provided by the assistants, but final responsibility remains with the moderator.
+
+---
+
+## Languages
+
+The assistants support:
+
+- German (DE)
+- English (EN)
+
+Language can be switched directly in the UI.
+
+---
+
+## Current Development Status
+
+Current focus areas include:
+
+- UI harmonization between assistants
+- moderation workflow alignment
+- escalation workflow refinement
+- usability improvements
+- validation and testing
+
+The project is under active development.
+
+---
+
+## Repository Structure
+
+```text
+chat/
+├── chatop-assistant.html
+├── CLAUDE_chat.md
+
+forum/
+├── moderator-assistant.html
+├── CLAUDE_forum.md
+
+assets/
+└── Ghosty.png
+```
+
+(Structure may evolve during development.)
+
+---
+
+## Development Notes
+
+Recent improvements include:
+
+- Unified avatar integration using external PNG assets
+- Reduced HTML file size by removing embedded Base64 images
+- Improved consistency between Forum and Chat assistant UIs
+- Ongoing alignment of moderation decision workflows
+
+## Local Testing
+
+The assistants currently run via a local Node.js server.
+
+### Requirements
+
+- Node.js installed
+- Valid company API key
+- Repository checked out locally
+
+### Configure API Key
+
+Before starting the server, open:
+
+```text
+server_shared.js
+```
+
+Replace the API key placeholder with a valid company API key.
+
+⚠️ Never commit a real API key to the repository.
+
+The placeholder exists intentionally because hosted environments provide the API key separately during startup.
+
+### Start Forum Moderation Assistant
+
+Open a terminal in the project root and run:
+
+```bash
+node server_shared.js 3000
+```
+
+Then open:
+
+```text
+http://localhost:3000
+```
+
+### Start Chat-OP Assistant
+
+Open a terminal in the project root and run:
+
+```bash
+node server_shared.js 3001
+```
+
+Then open:
+
+```text
+http://localhost:3001
+```
+
+---
+
+### Notes
+
+- A valid company API key is required.
+- The assistants are intended for internal testing and moderation support.
+- Final moderation decisions always remain with the human moderator.
+  
