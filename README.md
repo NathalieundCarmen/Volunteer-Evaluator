@@ -164,7 +164,7 @@ The assistants currently run via a local Node.js server.
 
 - Node.js installed
 - Valid company API key
-- Repository checked out locally
+- Local copy of the project repository
 
 ### Configure API Key
 
