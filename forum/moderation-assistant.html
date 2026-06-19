@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forum Moderation Assistant</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f5f4f0; min-height: 100vh; padding: 2rem 1rem; color: #1a1a18; }
+  .container { max-width: 720px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
+  .avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; object-position: 60% 20%; border: 2px solid #e8e6e0; flex-shrink: 0; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-text h1 { font-size: 18px; font-weight: 500; color: #1a1a18; }
+  .header-text p { font-size: 13px; color: #888780; margin-top: 2px; }
+  .lang-toggle { display: flex; border: 0.5px solid #d3d1c7; border-radius: 6px; overflow: hidden; }
+  .lang-btn { padding: 6px 14px; font-size: 13px; font-weight: 500; background: transparent; border: none; cursor: pointer; color: #888780; transition: all 0.15s; }
+  .lang-btn.active { background: #1a1a18; color: #fff; }
+  .card { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+  .field-label { font-size: 13px; color: #5f5e5a; margin-bottom: 6px; display: block; }
+  textarea { width: 100%; min-height: 100px; padding: 10px 12px; border: 0.5px solid #d3d1c7; border-radius: 8px; font-family: inherit; font-size: 14px; resize: vertical; background: #fff; color: #1a1a18; line-height: 1.6; transition: border-color 0.15s; }
+  textarea:focus { outline: none; border-color: #888780; }
+  input[type="text"] { width: 100%; padding: 8px 12px; border: 0.5px solid #d3d1c7; border-radius: 8px; font-family: inherit; font-size: 14px; background: #fff; color: #1a1a18; transition: border-color 0.15s; }
+  input[type="text"]:focus { outline: none; border-color: #888780; }
+  .context-toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #5f5e5a; cursor: pointer; margin-top: 1rem; padding: 0; background: none; border: none; }
+  .context-toggle:hover { color: #1a1a18; }
+  .context-fields { margin-top: 1rem; display: none; gap: 12px; flex-direction: column; }
+  .context-fields.open { display: flex; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .submit-btn { width: 100%; padding: 12px; background: #1a1a18; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; margin-top: 1rem; }
+  .submit-btn:hover { opacity: 0.85; }
+  .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .hil-note { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #888780; margin-top: 10px; }
+  .hil-dot { width: 6px; height: 6px; border-radius: 50%; background: #888780; flex-shrink: 0; }
+  .output-section { display: none; }
+  .output-section.visible { display: block; }
+  .output-card { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; overflow: hidden; }
+  .output-block { padding: 1rem 1.5rem; border-bottom: 0.5px solid #f1efe8; }
+  .output-block:last-child { border-bottom: none; }
+  .output-label { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; color: #888780; text-transform: uppercase; margin-bottom: 6px; }
+  .output-value { font-size: 15px; color: #1a1a18; line-height: 1.6; }
+  .action-item { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; color: #1a1a18; padding: 4px 0; }
+  .arrow { color: #5f5e5a; flex-shrink: 0; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .badge-low { background: #eaf3de; color: #3b6d11; }
+  .badge-medium { background: #faeeda; color: #854f0b; }
+  .badge-high { background: #fcebeb; color: #a32d2d; }
+  .escalation-box { background: #fcebeb; border: 0.5px solid #f7c1c1; border-radius: 8px; padding: 10px 14px; margin-top: 8px; }
+  .escalation-box p { font-size: 13px; color: #791f1f; }
+  .debug-section { background: #f5f4f0; border-top: 0.5px solid #d3d1c7; }
+  .debug-toggle { display: flex; align-items: center; justify-content: space-between; padding: 10px 1.5rem; cursor: pointer; font-size: 12px; color: #888780; }
+  .debug-content { padding: 0 1.5rem 1rem; display: none; }
+  .debug-content.open { display: block; }
+  .debug-row { display: flex; gap: 1.5rem; font-size: 12px; color: #5f5e5a; margin-top: 6px; }
+  .debug-item span:first-child { color: #888780; margin-right: 4px; }
+  .loading { display: none; text-align: center; padding: 2rem; color: #888780; font-size: 14px; }
+  .loading.visible { display: block; }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #d3d1c7; border-top-color: #1a1a18; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: -3px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-box { background: #fcebeb; border: 0.5px solid #f7c1c1; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #791f1f; display: none; margin-top: 1rem; }
+  .error-box.visible { display: block; }
+  .chevron { transition: transform 0.2s; display: inline-block; }
+  .chevron.open { transform: rotate(180deg); }
+  .optional-tag { font-size: 11px; color: #b4b2a9; margin-left: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="header-left">
+      <img src="Ghosty.png" alt="Ghosty" alt="AI Assistant" class="avatar">
+      <div class="header-text">
+        <h1 id="title">Forum Moderation Assistant</h1>
+        <p id="subtitle">POP / FET · For volunteer moderators</p>
+      </div>
+    </div>
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('de')">DE</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="field-label" id="label-post" for="post-content">Post content</label>
+    <textarea id="post-content" placeholder="Paste the forum post here..."></textarea>
+
+    <button class="context-toggle" onclick="toggleContext()" id="context-btn">
+      <span id="ctx-chevron" class="chevron">▾</span>
+      <span id="label-context-btn">Add thread context (optional)</span>
+    </button>
+
+    <div class="context-fields" id="context-fields">
+      <div class="field-row">
+        <div>
+          <label class="field-label" for="thread-title" id="label-title">Thread title <span class="optional-tag" id="opt1">optional</span></label>
+          <input type="text" id="thread-title" placeholder="e.g. Dein schönstes Sex-Erlebnis">
+        </div>
+      </div>
+      <div class="field-row">
+        <div>
+          <label class="field-label" for="thread-tone" id="label-tone">Thread tone <span class="optional-tag" id="opt2">optional</span></label>
+          <input type="text" id="thread-tone" placeholder="e.g. neutral, heated, friendly">
+        </div>
+        <div>
+          <label class="field-label" for="prev-messages" id="label-prev">Previous messages <span class="optional-tag" id="opt3">optional</span></label>
+          <input type="text" id="prev-messages" placeholder="Brief description if relevant">
+        </div>
+      </div>
+    </div>
+
+    <button class="submit-btn" onclick="requestAssessment()" id="submit-btn">Request assessment</button>
+    <div class="hil-note">
+      <div class="hil-dot"></div>
+      <span id="hil-text">AI assessment — the moderator decides whether and how to act.</span>
+    </div>
+  </div>
+
+  <div class="error-box" id="error-box"></div>
+  <div class="loading" id="loading"><span class="spinner"></span><span id="loading-text">Analysing case...</span></div>
+
+  <div class="output-section" id="output-section">
+    <div class="output-card">
+      <div class="output-block" id="incident-block">
+        <div class="output-label" id="label-incident">Incident</div>
+        <div class="output-value" id="incident-value"></div>
+      </div>
+      <div class="output-block" id="actions-block">
+        <div class="output-label" id="label-actions">Actions</div>
+        <div id="actions-value"></div>
+      </div>
+      <div class="output-block" id="context-block" style="display:none">
+        <div class="output-label" id="label-context-needed">Context needed</div>
+        <div class="output-value" id="context-value"></div>
+      </div>
+      <div class="output-block" id="options-block" style="display:none">
+        <div class="output-label" id="label-options">Options</div>
+        <div id="options-value"></div>
+      </div>
+      <div class="output-block" id="escalation-block" style="display:none">
+        <div class="escalation-box">
+          <p id="escalation-value"></p>
+        </div>
+      </div>
+      <div class="output-block" id="alt-block" style="display:none">
+        <div class="output-label" id="label-alt">Alternative classifications</div>
+        <div class="output-value" id="alt-value"></div>
+      </div>
+      <div class="output-block" id="reasoning-block" style="display:none">
+        <div class="output-label" id="label-reasoning">Reasoning</div>
+        <div class="output-value" id="reasoning-value"></div>
+      </div>
+      <div class="output-block">
+        <div class="output-label" id="label-uncertainty">Uncertainty</div>
+        <div id="uncertainty-value"></div>
+      </div>
+
+      <div class="debug-section">
+        <div class="debug-toggle" onclick="toggleDebug()">
+          <span id="debug-label">DEBUG (test phase)</span>
+          <span id="debug-chevron" class="chevron">▾</span>
+        </div>
+        <div class="debug-content" id="debug-content">
+          <div class="debug-row">
+            <div class="debug-item"><span id="d-type-label">Type:</span><span id="debug-type"></span></div>
+            <div class="debug-item"><span id="d-sev-label">Severity:</span><span id="debug-severity"></span></div>
+            <div class="debug-item"><span id="d-unc-label">Uncertainty:</span><span id="debug-uncertainty"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SYSTEM_PROMPT = `You are a forum moderation assistant for POP (Poppen.de) and FET (Fetisch.de) adult community platforms.
+
+CLAUDE.md — Moderation Ruleset (Forum)
+
+Core Principle: AI recommends. Human decides. Always. Only volunteers with an active special profile may issue warnings.
+
+Role Separation:
+- Forum MOD (Volunteer): Forum — Yes with exceptions
+- Support (Core Team): Platform-wide — Full access incl. Only Support
+Only Support: Warning reasons marked [ONLY Support] may not be executed by volunteers. Report to Support instead.
+
+Warning Catalogue (Forum-relevant):
+Category A — Contact & Communication:
+- Kontaktdaten | Contact Details
+- Fremdlinks | External Links
+- Fremdwerbung | External Advertising
+
+Category B — Behaviour & Tone:
+- unerwünschtes Verhalten | Inappropriate Behaviour
+- Tonfall/Wortwahl | Dirty Talk
+- Penetranz | Disruptiveness
+- Beleidigung (leicht) | Insults (Low)
+- Beleidigung (mittel) | Insults (Moderate)
+- Beleidigung (schwer) | Insults (Strong)
+- Diskriminierung | Discrimination
+
+Category D — Taboo & Criminal Law:
+- Sex unter 18 Fantasien | Blocked Profile: Underage Sex Fantasies
+- Minderjährig Verdacht | Underage Suspicion
+- Tier-/K9-Fantasie | Bestiality Fantasy
+- Tiere-K9, Bilder/Videos & Verabredungen | Bestiality
+- Inzest-Fantasien | Incest Fantasies
+- Realer Inzest | Incest
+- Kriminelle Handlungen Fantasie | Fantasies of Crime
+- Bericht Kindheit/Jugend | Avoid Childhood Stories [ONLY Support]
+
+Category E — Offers & Commercial Content:
+- Date-Gesuche | Avoid Public Date Ads
+- öffentliches Fremdschwängern | Avoid Fertility Offers
+- Unmoralisches Angebot | Financial Offer
+- FinDom | Findom/Sugar Relationship
+
+Category F — Technical & Account Violations:
+- Fake-Anprangerungen | False Accusations
+- Nicht gestatteter Raumname | Rename Your Room
+- Doppelprofil | Double Profile [ONLY Support]
+- Falsches Geschlecht | Wrong Gender [ONLY Support]
+
+Category G — Drugs:
+- Drogen – Angebot/Nachfrage | Drugs (Offer/Request)
+
+Category H — Forum-specific:
+- Forum – Off Topic/Forenregel-Verstoß | Violation of Threads Guidelines
+- Forum – FSK18 Inhalt | Avoid Spicy Content
+- Forum – Schatzsuche Spoiler | Don't Spoil the Pop Game
+- Forum – Sprache | Respect Local Language
+
+Category I — Info & Miscellaneous:
+- Allgemeine Info | General Info
+- Finanzielles Interesse | Profile Blocked: Financial Interests
+
+Severity Model (internal guidance only):
+- Info: Notices without warning points
+- Light: Contact details, external links, disruptiveness, date ads
+- Medium: Insults low/moderate, tone/wording
+- Severe: Insults strong, discrimination
+- Critical: FinDom, real incest, financial interest → immediate permanent ban
+
+Escalation Logic:
+C1 — LEGAL Escalation (mandatory): Issue warning AND report in User Reports Channel:
+- Realer Inzest | Incest
+- Tiere-K9, Bilder/Videos & Verabredungen | Bestiality
+- FinDom | Findom/Sugar Relationship
+- Sex unter 18 Fantasien | Blocked Profile: Underage Sex Fantasies
+- Minderjährig Verdacht | Underage Suspicion
+
+C2 — Internal Escalation: Issue warning → profile automatically permanently banned. No further action required:
+- Finanzielles Interesse | Profile Blocked: Financial Interests
+- Fremdwerbung | External Advertising
+Distinction: Fremdwerbung = advertising for external commercial platforms (e.g. OnlyFans). Note: Kaufmich belongs to the company group and may be mentioned — not a rule violation. Finanzielles Interesse = financial interest directly on the platform (e.g. payment offers to other members).
+
+Edge Case Rulings:
+Ruling 1 — Fantasy vs. Reality (Category D): Fantasy/roleplay framing → standard warning (light/medium). Real act or concrete suspicion → C1 escalation. If unclear: C1 escalation — safety first.
+Ruling 2 — Insult Levels: Light: single dismissive statement, no direct personal attack. Moderate: direct personal insult, clear intent. Severe: massive insult, threat or repeated attack. If unclear: lower level + Uncertainty: medium.
+Ruling 3 — Relationship Context: Check for humour markers (*lach*, smileys, mutual exchange). If present: no violation or insult light. No humour marker: standard classification.
+Ruling 4 — FSK18 Content & Platform Context: POP/FET are adult platforms but FSK18 content is not generally permitted. In chat: private rooms only. In forum: generally not permitted. Exception: "Erotische Geschichten" (moderators know this from training). IMPORTANT: "Forum – FSK18 Inhalt | Avoid Spicy Content" applies EXCLUSIVELY to the Kink Akademie section in FET (where only FSK12 content is permitted). For FSK18 content in the general forum → ALWAYS use "Forum – Off Topic/Forenregel-Verstoß | Violation of Threads Guidelines". Never use FSK18 Inhalt warning outside the Kink Akademie context.
+Ruling 5 — Permitted External Links: Permitted: YouTube/Vimeo music videos only, Wikipedia articles, Instagram posts, internal links. Not permitted: all other external links. If linked content unknown: Type B2 — request context.
+Ruling 6 — Inappropriate Behaviour vs. Insult (Light): Statement directed at a specific person → Insult (light/moderate/severe). Generally dismissive without direct personal attack → unerwünschtes Verhalten | Inappropriate Behaviour. If unclear → Type B1, Uncertainty: medium.
+Ruling 7 — Discrimination vs. Hate Speech: No separate category for hate speech. Use Beleidigung (schwer) | Insults (Strong). Dismissive statement about a group, no generalisation → Diskriminierung | Discrimination. Generalisation ("all", "always") + degrading wording against entire group → Beleidigung (schwer) | Insults (Strong). If unclear → Type B1, Uncertainty: medium.
+Ruling 8 — Unmoralisches Angebot vs. Finanzielles Interesse: Offer of money for a meeting/sex → Unmoralisches Angebot | Financial Offer (Category E, Type A, Severity: medium, NOT C2). Commercial/professional intent on platform → Finanzielles Interesse | Profile Blocked: Financial Interests (C2). If unclear → Type B1, moderator decides. IMPORTANT: "Finanzielles Interesse" must NEVER appear as an alternative classification for personal payment offers for meetings. It only applies when there is clear evidence of a commercial/professional business model on the platform.
+Ruling 9 — Inzest-Fantasien vs. Kriminelle Handlungen Fantasie: Incest requires sexual intercourse (penetrative sex) between blood relatives (parent/child, siblings, grandparent/grandchild). Does NOT qualify as incest: third-party fantasy about related persons (e.g. "I want to buy a mother and daughter"), other sexual acts between relatives without intercourse, violence or coercion without blood relation between acting parties. Classification: sexual intercourse between blood relatives described → Inzest-Fantasien | Incest Fantasies. Violence, coercion, or crime WITHOUT qualifying blood relation → Kriminelle Handlungen Fantasie | Fantasies of Crime. If both elements present → Kriminelle Handlungen Fantasie takes priority (more severe).
+
+Missing Context Rules:
+DO NOT request: private message history, warning history of the user, posts in other threads.
+MAY REQUEST: thread tone and context, directly visible conversation flow, user activity (number of posts) — only for solicitation-style posts.
+
+Solicitation Rule: Solicitation-style posts are always treated as such regardless of whether the thread context fits thematically.
+
+User Activity Rule (only for date ads / solicitation):
+- 1–10 posts (Newbie): no warning — notice + redirect to Dating
+- 11–100 posts (Active User): moderator discretion
+- 100+ posts (Regular): warning "Forum – Off Topic/Forenregel-Verstoß | Violation of Threads Guidelines"
+
+Note on templates: For all warnings, use the template text from the warning catalogue. Adapt if needed (e.g. for hate speech). Do not invent free text.
+
+---
+
+DECISION LOGIC:
+
+Step 1 — Check input: If empty, emoji-only, or deleted content → respond with {"incident": "Insufficient input — content cannot be assessed", "type": "A", "severity": "not applicable", "uncertainty": "high", "actions": ["No assessment possible — please provide post content"], "context_needed": null, "options": null, "escalation": null, "alternatives": null, "template_note": ""}. If partially censored (e.g. asterisks): assess based on visible context. If text consists of random characters, keyboard spam, or has no recognisable meaning in any language → respond with the same insufficient input JSON. Only proceed to Step 2 if the input contains assessable content.
+
+Step 2 — C-Check (always first):
+C1 — LEGAL Escalation (mandatory): Real incest, Real bestiality, FinDom activity, Sex with minors/child abuse, Minor activity (user identifies as under 18) → Output Variant C1. IMPORTANT: "Minderjährig Verdacht | Underage Suspicion" applies ONLY when a user identifies themselves as under 18. It does NOT apply when another person is described or addressed as a minor — in those cases use "Sex unter 18 Fantasien" or escalate via C1 based on content.
+C2 — Internal Escalation: Advertising spam/scammer activity, Financial interest → Output Variant C2.
+Note on Inzest-Fantasien vs. Kriminelle Handlungen Fantasie: Incest requires sexual intercourse (penetrative sex) between blood relatives (parent/child, siblings, grandparent/grandchild). Third-party scenarios, violence/coercion without blood relation, or sexual acts short of intercourse do NOT qualify as incest. If no qualifying blood relation → use Kriminelle Handlungen Fantasie. If both elements present → Kriminelle Handlungen Fantasie takes priority.
+
+Step 3 — Check for moderation violation (only if no C1/C2):
+→ Yes, clearly without context → Step 3a → then Step 4
+→ Yes, but severity depends on context → Type B1 → Output Variant 3
+→ Unclear without context → Type B2 → Output Variant 3
+→ No → Output Variant 2
+
+Step 3a — User Activity Rule: Only for date ads/solicitation-style posts. Check number of forum posts. 1–10 (Newbie) → Output Variant 2 with notice. 11–100 (Active User) → Output Variant 3. 100+ (Regular) → Step 4.
+
+Step 4 — Type A: Violation clear, no context needed → Output Variant 1.
+
+Important rules:
+- Always apply only ONE warning category per post
+- If multiple apply → always choose the most severe
+- State uncertainty explicitly, never hide it
+- If C1 risk cannot be excluded → always escalate
+- Only request verifiable information as context
+
+---
+
+OUTPUT FORMAT — respond ONLY with valid JSON, no markdown, no explanation outside the JSON.
+
+LANGUAGE RULE: Respond in the same language as the post content. If the post is in German, use German for all free-text fields (actions, context_needed, options, escalation). If in English, use English. Warning category names (incident, alternatives) always remain bilingual DE | EN as they appear in the warning catalogue.
+
+TYPE CONSISTENCY RULES (mandatory — strictly enforced):
+- If context_needed is not null OR options is not null → type MUST be B1 or B2, NEVER A
+- If alternatives contains alternative categories that were genuinely considered → type MUST be B1 or B2, NEVER A
+- Exception: alternatives may appear with Type A ONLY when the alternative was clearly ruled out before any consideration (e.g. Finanzielles Interesse ruled out by Ruling 8 in a clear Unmoralisches Angebot case)
+- Type A: only when violation is 100% clear, single category, no context needed, no genuine uncertainty
+- Type B1: violation clear but severity OR category depends on context
+- Type B2: unclear whether a violation exists without context
+- Type C1/C2: only for escalation cases
+
+INCIDENT FIELD RULE: The "incident" field must ALWAYS contain the FINAL warning category that will actually be issued — not a preliminary assessment. If the final category differs from an initial assessment, the initial assessment goes into "alternatives", not "incident".
+
+{
+  "incident": "final warning category DE | EN (e.g. Beleidigung (leicht) | Insults (Low)) or No rule violation",
+  "type": "A|B1|B2|C1|C2",
+  "severity": "light|medium|severe|critical|not applicable|info",
+  "uncertainty": "low|medium|high",
+  "actions": ["action 1", "action 2"],
+  "context_needed": null or "question to moderator",
+  "options": null or [{"condition": "if X", "action": "do Y"}, ...],
+  "escalation": null or "escalation instruction",
+  "alternatives": null or [{"category": "alternative category DE | EN", "reason": "why considered but ruled out or why it could apply"}],
+  "reasoning": "One sentence explaining why this specific classification was chosen over alternatives. Omit (null) for B2/No violation cases where context_needed already explains the situation.",
+  "template_note": "Use warning catalogue template text. Adapt if needed."
+}
+
+For no violation: actions should be ["Post remains visible or will only be hidden"] and optionally include a notice recommendation.
+IMPORTANT — Action wording: moderators cannot permanently delete posts. Always use "Beitrag verstecken" (hide) or "Beitrag editieren" (edit relevant passage) — NEVER "entfernen" or "löschen". In English: "Hide post" or "Edit post" — NEVER "remove" or "delete".
+For C1: always include escalation field with "Report in User Reports Channel — reason: [specific risk]".
+For B1/B2: include context_needed and options.`;
+
+let currentLang = 'en';
+let debugOpen = false;
+let contextOpen = false;
+
+const translations = {
+  en: {
+    title: 'Forum Moderation Assistant',
+    subtitle: 'POP / FET · For volunteer moderators',
+    labelPost: 'Post content',
+    labelContextBtn: 'Add thread context (optional)',
+    labelTitle: 'Thread title',
+    labelTone: 'Thread tone',
+    labelPrev: 'Previous messages',
+    opt: 'optional',
+    submitBtn: 'Request assessment',
+    hilText: 'AI assessment — the moderator decides whether and how to act.',
+    loadingText: 'Analysing case...',
+    labelIncident: 'Incident',
+    labelActions: 'Actions',
+    labelContextNeeded: 'Context needed',
+    labelOptions: 'Options',
+    labelUncertainty: 'Uncertainty',
+    labelAlt: 'Alternative classifications',
+    labelReasoning: 'Reasoning',
+    debugLabel: 'DEBUG (test phase)',
+    dTypeLabel: 'Type:',
+    dSevLabel: 'Severity:',
+    dUncLabel: 'Uncertainty:',
+    errorEmpty: 'Please enter post content before requesting an assessment.',
+    errorApi: 'Error calling the API. Please try again.',
+  },
+  de: {
+    title: 'Forum Moderations-Assistent',
+    subtitle: 'POP / FET · Für Volunteer-Moderatoren',
+    labelPost: 'Beitragsinhalt',
+    labelContextBtn: 'Thread-Kontext hinzufügen (optional)',
+    labelTitle: 'Thread-Titel',
+    labelTone: 'Thread-Ton',
+    labelPrev: 'Vorherige Nachrichten',
+    opt: 'optional',
+    submitBtn: 'Einschätzung anfordern',
+    hilText: 'KI-Einschätzung — der Moderator entscheidet ob und wie gehandelt wird.',
+    loadingText: 'Fall wird analysiert...',
+    labelIncident: 'Vorfall',
+    labelActions: 'Maßnahmen',
+    labelContextNeeded: 'Kontext benötigt',
+    labelOptions: 'Optionen',
+    labelUncertainty: 'Unsicherheit',
+    labelAlt: 'Alternative Klassifikationen',
+    labelReasoning: 'Begründung',
+    debugLabel: 'DEBUG (nur Testphase)',
+    dTypeLabel: 'Typ:',
+    dSevLabel: 'Schweregrad:',
+    dUncLabel: 'Unsicherheit:',
+    errorEmpty: 'Bitte Beitragsinhalt eingeben bevor eine Einschätzung angefordert wird.',
+    errorApi: 'Fehler beim API-Aufruf. Bitte erneut versuchen.',
+  }
+};
+
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.lang-btn[onclick="setLang('${lang}')"]`).classList.add('active');
+  const t = translations[lang];
+  document.getElementById('title').textContent = t.title;
+  document.getElementById('subtitle').textContent = t.subtitle;
+  document.getElementById('label-post').textContent = t.labelPost;
+  document.getElementById('label-context-btn').textContent = t.labelContextBtn;
+  ['opt1','opt2','opt3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t.opt;
+  });
+  const labelMap = { 'label-title': t.labelTitle, 'label-tone': t.labelTone, 'label-prev': t.labelPrev };
+  Object.entries(labelMap).forEach(([id, text]) => {
+    const el = document.getElementById(id);
+    if (el) { el.childNodes[0].textContent = text + ' '; }
+  });
+  document.getElementById('submit-btn').textContent = t.submitBtn;
+  document.getElementById('hil-text').textContent = t.hilText;
+  document.getElementById('loading-text').textContent = t.loadingText;
+  document.getElementById('label-incident').textContent = t.labelIncident;
+  document.getElementById('label-actions').textContent = t.labelActions;
+  document.getElementById('label-context-needed').textContent = t.labelContextNeeded;
+  document.getElementById('label-options').textContent = t.labelOptions;
+  document.getElementById('label-uncertainty').textContent = t.labelUncertainty;
+  document.getElementById('label-alt').textContent = t.labelAlt;
+  document.getElementById('label-reasoning').textContent = t.labelReasoning;
+  document.getElementById('debug-label').textContent = t.debugLabel;
+  document.getElementById('d-type-label').textContent = t.dTypeLabel;
+  document.getElementById('d-sev-label').textContent = t.dSevLabel;
+  document.getElementById('d-unc-label').textContent = t.dUncLabel;
+}
+
+function toggleContext() {
+  contextOpen = !contextOpen;
+  document.getElementById('context-fields').classList.toggle('open', contextOpen);
+  document.getElementById('ctx-chevron').classList.toggle('open', contextOpen);
+}
+
+function toggleDebug() {
+  debugOpen = !debugOpen;
+  document.getElementById('debug-content').classList.toggle('open', debugOpen);
+  document.getElementById('debug-chevron').classList.toggle('open', debugOpen);
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-box');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('error-box').classList.remove('visible');
+}
+
+function buildUserMessage() {
+  const post = document.getElementById('post-content').value.trim();
+  const title = document.getElementById('thread-title').value.trim();
+  const tone = document.getElementById('thread-tone').value.trim();
+  const prev = document.getElementById('prev-messages').value.trim();
+  let msg = `Post Content: "${post}"\n`;
+  if (title) msg += `Thread Title: ${title}\n`;
+  if (tone) msg += `Thread Tone: ${tone}\n`;
+  if (prev) msg += `Previous Messages: ${prev}\n`;
+  return msg;
+}
+
+function renderOutput(data) {
+  document.getElementById('incident-value').textContent = data.incident || '—';
+  const actionsEl = document.getElementById('actions-value');
+  actionsEl.innerHTML = '';
+  if (data.actions && data.actions.length) {
+    data.actions.forEach(a => {
+      const div = document.createElement('div');
+      div.className = 'action-item';
+      div.innerHTML = `<span class="arrow">→</span><span>${a}</span>`;
+      actionsEl.appendChild(div);
+    });
+  }
+  const ctxBlock = document.getElementById('context-block');
+  const ctxVal = document.getElementById('context-value');
+  if (data.context_needed) {
+    ctxBlock.style.display = 'block';
+    ctxVal.textContent = data.context_needed;
+  } else {
+    ctxBlock.style.display = 'none';
+  }
+  const optBlock = document.getElementById('options-block');
+  const optVal = document.getElementById('options-value');
+  if (data.options && data.options.length) {
+    optBlock.style.display = 'block';
+    optVal.innerHTML = data.options.map(o =>
+      `<div class="action-item"><span class="arrow">→</span><span><strong>${o.condition}:</strong> ${o.action}</span></div>`
+    ).join('');
+  } else {
+    optBlock.style.display = 'none';
+  }
+  const escBlock = document.getElementById('escalation-block');
+  const escVal = document.getElementById('escalation-value');
+  if (data.escalation) {
+    escBlock.style.display = 'block';
+    escVal.textContent = '⚠ ' + data.escalation;
+  } else {
+    escBlock.style.display = 'none';
+  }
+  const altBlock = document.getElementById('alt-block');
+  const altVal = document.getElementById('alt-value');
+  if (data.alternatives && data.alternatives.length) {
+    altBlock.style.display = 'block';
+    altVal.innerHTML = data.alternatives.map(a =>
+      `<div class="action-item"><span class="arrow">→</span><span>${a.category} — ${a.reason}</span></div>`
+    ).join('');
+  } else {
+    altBlock.style.display = 'none';
+  }
+  const reasoningBlock = document.getElementById('reasoning-block');
+  const reasoningVal = document.getElementById('reasoning-value');
+  if (data.reasoning) {
+    reasoningBlock.style.display = 'block';
+    reasoningVal.textContent = data.reasoning;
+  } else {
+    reasoningBlock.style.display = 'none';
+  }
+  const unc = (data.uncertainty || 'low').toLowerCase();
+  const uncEl = document.getElementById('uncertainty-value');
+  const t = translations[currentLang];
+  const labels = { low: currentLang === 'de' ? 'Niedrig' : 'Low', medium: currentLang === 'de' ? 'Mittel' : 'Medium', high: currentLang === 'de' ? 'Hoch' : 'High' };
+  uncEl.innerHTML = `<span class="badge badge-${unc}">${labels[unc] || unc}</span>`;
+  document.getElementById('debug-type').textContent = data.type || '—';
+  document.getElementById('debug-severity').textContent = data.severity || '—';
+  document.getElementById('debug-uncertainty').textContent = data.uncertainty || '—';
+}
+
+async function requestAssessment() {
+  hideError();
+  const post = document.getElementById('post-content').value.trim();
+  if (!post) { showError(translations[currentLang].errorEmpty); return; }
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  document.getElementById('loading').classList.add('visible');
+  document.getElementById('output-section').classList.remove('visible');
+  try {
+    const response = await fetch('http://localhost:3000/api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        temperature: 0,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: buildUserMessage() }]
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || 'API error');
+    const text = data.content[0].text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(text);
+    renderOutput(parsed);
+    document.getElementById('output-section').classList.add('visible');
+  } catch (e) {
+    showError(translations[currentLang].errorApi + (e.message ? ' (' + e.message + ')' : ''));
+  } finally {
+    btn.disabled = false;
+    document.getElementById('loading').classList.remove('visible');
+  }
+}
+</script>
+</body>
+</html>
